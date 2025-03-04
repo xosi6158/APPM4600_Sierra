@@ -1,0 +1,141 @@
+import numpy as np
+import math
+from numpy.linalg import inv, norm
+from numpy.linalg import norm as np_norm
+
+# Question 2
+
+def F(x):
+    F = np.zeros(3)
+    F[0] = x[0] + np.cos(x[0] * x[1] * x[2]) - 1
+    F[1] = (1 - x[0]) ** 0.25 + x[1] + 0.05 * x[2] ** 2 - 0.15 * x[2] - 1
+    F[2] = -x[0] ** 2 - 0.1 * x[1] ** 2 + 0.01 * x[1] + x[2] - 1
+    return F
+
+
+def J(x):
+    J = np.zeros((3, 3))
+    J[0, 0] = 1 - x[1] * x[2] * np.sin(x[0] * x[1] * x[2])
+    J[0, 1] = -x[0] * x[2] * np.sin(x[0] * x[1] * x[2])
+    J[0, 2] = -x[0] * x[1] * np.sin(x[0] * x[1] * x[2])
+    
+    J[1, 0] = -0.25 * (1 - x[0]) ** -0.75
+    J[1, 1] = 1
+    J[1, 2] = 0.1 * x[2] - 0.15
+    
+    J[2, 0] = -2 * x[0]
+    J[2, 1] = -0.2 * x[1] + 0.01
+    J[2, 2] = 1
+    
+    return J
+
+
+def newton(F, J, x0, tol, nmax, verb=False):
+    xn = x0
+    rn = np.array([xn])  # list of iterates
+    n = 0
+    npn = 1
+    while(npn > tol and n <= nmax):
+        Fn = F(xn)
+        Jn = J(xn)
+        pn = -np.linalg.solve(Jn, Fn)
+        xn = xn + pn
+        npn = np.linalg.norm(pn)
+        n += 1
+        rn = np.vstack((rn, xn))
+    return xn, rn, n
+
+def function_norm(x):
+    Fx = F(x)
+    return np.sum(Fx**2)
+
+def gradient(x):
+    Fx = F(x)
+    Jn = J(x) 
+    return np.transpose(Jn) @ Fx
+
+def steepest_descent(x, tol, Nmax):
+    for n in range(Nmax):
+        g1 = function_norm(x)
+        z = gradient(x)
+        z0 = np_norm(z)
+
+        if z0 == 0:
+            print("Gradient = Zero")
+            return [x, g1, n+1]
+            
+        z = z/z0
+        alpha3 = 1
+        new_x = x - alpha3*z
+        g3 = function_norm(new_x)
+
+        while g3 >= g1:
+            alpha3 = alpha3/2
+            new_x = x - alpha3*z
+            g3 = function_norm(new_x)
+            
+        if alpha3<tol:
+            print("Descent has not improved")
+            return [x,g1,n+1]
+        
+        alpha2 = alpha3/2
+        new_x = x - alpha2*z
+        g2 = function_norm(new_x)
+
+        h1 = (g2 - g1)/alpha2
+        h2 = (g3-g2)/(alpha3-alpha2)
+        h3 = (h2-h1)/alpha3
+
+        alpha0 = 0.5*(alpha2 - h1/h3)
+        new_x= x - alpha0*z
+        g0 = function_norm(new_x)
+
+        if g0<=g3:
+            alpha = alpha0
+            gval = g0
+        else:
+            alpha = alpha3
+            gval =g3
+
+        x = x - alpha*z
+
+        if abs(gval - g1)<tol:
+            return [x,gval,n+1]
+
+    print('Reached maximum number of iterations')      
+    return [x,g1,n+1]
+
+
+def driver():
+    tol = 1e-6
+    tol_steep = 5e-2
+    Nmax = 100
+    x0 = np.array([0.0, 0.0, 0])
+
+
+
+
+    x_newton, ier_newton, its_newton = newton(F, J, x0, tol, Nmax, verb=False)
+    print("Direct Newton:")
+    print(f"Root: {x_newton}")
+    print(f"Iterations: {its_newton}") 
+
+    x_sd, ier_sd, its_sd = steepest_descent(x0, tol, Nmax)
+    print("Steepest Descent (tol=1e-6):")
+    print(f"Root: {x_sd}")
+    print(f"Iterations: {its_sd}\n")
+
+    x_sd, ier_sd, its_sd = steepest_descent(x0, tol_steep, Nmax)
+    print("Steepest Descent (tol=5e-2):")
+    print(f"Root: {x_sd}")
+    print(f"Iterations: {its_sd}\n")
+
+    x_sd_refined, ier_sd_refined, its_sd_refined = newton(F, J, x_sd, tol_steep, Nmax)
+    print("Newton after Steepest Descent:")
+    print(f"Root: {x_sd_refined}")
+    print(f"Iterations: {its_sd_refined}\n")
+
+
+if __name__ == '__main__':
+        driver()
+
